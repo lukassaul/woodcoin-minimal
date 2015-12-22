@@ -1,0 +1,122 @@
+Shutdown : In progress...
+StopNode()
+Flushed 0 addresses to peers.dat  295ms
+Shutdown : done
+2015-12-22 19:30:59 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+2015-12-22 19:30:59 Woodcoin version 1.2.0.10 (Dec 21 2015, 23:16:45)
+2015-12-22 19:30:59 Using OpenSSL version OpenSSL 1.0.1f 6 Jan 2014
+2015-12-22 19:30:59 Default data directory /home/bowler/.woodcoin
+2015-12-22 19:30:59 Using data directory 
+2015-12-22 19:30:59 Using at most 125 connections (1024 file descriptors available)
+2015-12-22 19:30:59 Using 2 threads for script verification
+2015-12-22 19:30:59 init message: Verifying wallet...
+2015-12-22 19:30:59 dbenv.open LogDir=database ErrorFile=db.log
+2015-12-22 19:30:59 Bound to [::]:8338
+2015-12-22 19:30:59 Bound to 0.0.0.0:8338
+2015-12-22 19:30:59 init message: Loading block index...
+2015-12-22 19:30:59 Opening LevelDB in blocks/index
+2015-12-22 19:30:59 Opened LevelDB successfully
+2015-12-22 19:30:59 Opening LevelDB in chainstate
+2015-12-22 19:30:59 Opened LevelDB successfully
+2015-12-22 19:30:59 LoadBlockIndexDB(): last block file = 0
+2015-12-22 19:30:59 LoadBlockIndexDB(): transaction index disabled
+2015-12-22 19:30:59 Initializing databases...
+2015-12-22 19:30:59 30758383eae55ae5c7752b73388c1c85bdfbe930ad25ad877252841ed1e734a4
+2015-12-22 19:30:59 30758383eae55ae5c7752b73388c1c85bdfbe930ad25ad877252841ed1e734a4
+2015-12-22 19:30:59 d508b7916ec00595c1f8e1c767dc3b37392a5e68adf98118bca80a2ed58331d6
+2015-12-22 19:30:59 CBlock(hash=30758383eae55ae5c7752b73388c1c85bdfbe930ad25ad877252841ed1e734a4, input=010000000000000000000000000000000000000000000000000000000000000000000000d63183d52e0aa8bc1881f9ad685e2a39373bdc67c7e1f8c19505c06e91b708d5ec234554f0ff0f1e95471800, PoW=00000f36ceeabb4fa0e3915d9f9d5d0c56bf24c574a24ba25646309854b50201, ver=1, hashPrevBlock=0000000000000000000000000000000000000000000000000000000000000000, hashMerkleRoot=d508b7916ec00595c1f8e1c767dc3b37392a5e68adf98118bca80a2ed58331d6, nTime=1413817324, nBits=1e0ffff0, nNonce=1591189, vtx=1)
+2015-12-22 19:30:59   CTransaction(hash=d508b7916ec00595c1f8e1c767dc3b37392a5e68adf98118bca80a2ed58331d6, ver=1, vin.size=1, vout.size=1, nLockTime=0)
+    CTxIn(COutPoint(0000000000000000000000000000000000000000000000000000000000000000, 4294967295), coinbase 04ffff001d010430426172756b204b68617a61642e202042544320426c6f636b20333236313733206e6f6e63653a20383738303136363536)
+    CTxOut(nValue=0.00000000, scriptPubKey=0 OP_CHECKSIG)
+  vMerkleTree: d508b7916ec00595c1f8e1c767dc3b37392a5e68adf98118bca80a2ed58331d6 
+2015-12-22 19:30:59 ERROR: LoadBlockIndex() : failed to initialize block database: boost::filesystem::space: No such file or directory
+2015-12-22 19:30:59 : Error initializing block database.
+
+Do you want to rebuild the block database now?
+2015-12-22 19:30:59 Shutdown : In progress...
+2015-12-22 19:30:59 StopNode()
+2015-12-22 19:31:00 Flushed 0 addresses to peers.dat  48ms
+2015-12-22 19:31:00 Committing 0 changed transactions to coin database...
+2015-12-22 19:31:00 Shutdown : done
+Shutdown : In progress...
+StopNode()
+Flushed 0 addresses to peers.dat  295ms
+Shutdown : done
+2015-12-22 19:31:34 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+2015-12-22 19:31:34 Woodcoin version 1.2.0.10 (Dec 21 2015, 23:16:45)
+2015-12-22 19:31:34 Using OpenSSL version OpenSSL 1.0.1f 6 Jan 2014
+2015-12-22 19:31:34 Default data directory /home/bowler/.woodcoin
+2015-12-22 19:31:34 Using data directory 
+2015-12-22 19:31:34 Using at most 125 connections (1024 file descriptors available)
+2015-12-22 19:31:34 Using 2 threads for script verification
+2015-12-22 19:31:34 init message: Verifying wallet...
+2015-12-22 19:31:34 dbenv.open LogDir=database ErrorFile=db.log
+2015-12-22 19:31:34 Bound to [::]:8338
+2015-12-22 19:31:34 Bound to 0.0.0.0:8338
+2015-12-22 19:31:34 init message: Loading block index...
+2015-12-22 19:31:34 Opening LevelDB in blocks/index
+2015-12-22 19:31:34 Opened LevelDB successfully
+2015-12-22 19:31:34 Opening LevelDB in chainstate
+2015-12-22 19:31:35 Opened LevelDB successfully
+2015-12-22 19:31:35 LoadBlockIndexDB(): last block file = 0
+2015-12-22 19:31:35 LoadBlockIndexDB(): transaction index disabled
+2015-12-22 19:31:35 Initializing databases...
+2015-12-22 19:31:35 30758383eae55ae5c7752b73388c1c85bdfbe930ad25ad877252841ed1e734a4
+2015-12-22 19:31:35 30758383eae55ae5c7752b73388c1c85bdfbe930ad25ad877252841ed1e734a4
+2015-12-22 19:31:35 d508b7916ec00595c1f8e1c767dc3b37392a5e68adf98118bca80a2ed58331d6
+2015-12-22 19:31:35 CBlock(hash=30758383eae55ae5c7752b73388c1c85bdfbe930ad25ad877252841ed1e734a4, input=010000000000000000000000000000000000000000000000000000000000000000000000d63183d52e0aa8bc1881f9ad685e2a39373bdc67c7e1f8c19505c06e91b708d5ec234554f0ff0f1e95471800, PoW=00000f36ceeabb4fa0e3915d9f9d5d0c56bf24c574a24ba25646309854b50201, ver=1, hashPrevBlock=0000000000000000000000000000000000000000000000000000000000000000, hashMerkleRoot=d508b7916ec00595c1f8e1c767dc3b37392a5e68adf98118bca80a2ed58331d6, nTime=1413817324, nBits=1e0ffff0, nNonce=1591189, vtx=1)
+2015-12-22 19:31:35   CTransaction(hash=d508b7916ec00595c1f8e1c767dc3b37392a5e68adf98118bca80a2ed58331d6, ver=1, vin.size=1, vout.size=1, nLockTime=0)
+    CTxIn(COutPoint(0000000000000000000000000000000000000000000000000000000000000000, 4294967295), coinbase 04ffff001d010430426172756b204b68617a61642e202042544320426c6f636b20333236313733206e6f6e63653a20383738303136363536)
+    CTxOut(nValue=0.00000000, scriptPubKey=0 OP_CHECKSIG)
+  vMerkleTree: d508b7916ec00595c1f8e1c767dc3b37392a5e68adf98118bca80a2ed58331d6 
+2015-12-22 19:31:35 ERROR: LoadBlockIndex() : failed to initialize block database: boost::filesystem::space: No such file or directory
+2015-12-22 19:31:35 : Error initializing block database.
+
+Do you want to rebuild the block database now?
+2015-12-22 19:31:35 Shutdown : In progress...
+2015-12-22 19:31:35 StopNode()
+2015-12-22 19:31:35 Flushed 0 addresses to peers.dat  48ms
+2015-12-22 19:31:35 Committing 0 changed transactions to coin database...
+2015-12-22 19:31:35 Shutdown : done
+Shutdown : In progress...
+StopNode()
+Flushed 0 addresses to peers.dat  39ms
+Shutdown : done
