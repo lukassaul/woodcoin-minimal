@@ -8,12 +8,10 @@
 #include "uint256.h"
 
 #include <stdarg.h>
-
-#ifndef WIN32
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/resource.h>
-#endif
+
 #include <map>
 #include <list>
 #include <utility>
@@ -91,14 +89,9 @@ T* alignup(T* p)
     return u.ptr;
 }
 
-#ifdef WIN32
-#define MSG_NOSIGNAL        0
-#define MSG_DONTWAIT        0
-
 #ifndef S_IRUSR
 #define S_IRUSR             0400
 #define S_IWUSR             0200
-#endif
 #else
 #define MAX_PATH            1024
 #endif
@@ -211,13 +204,8 @@ boost::filesystem::path GetDefaultDataDir();
 const boost::filesystem::path &GetDataDir(bool fNetSpecific = true);
 boost::filesystem::path GetConfigFile();
 boost::filesystem::path GetPidFile();
-#ifndef WIN32
 void CreatePidFile(const boost::filesystem::path &path, pid_t pid);
-#endif
 void ReadConfigFile(std::map<std::string, std::string>& mapSettingsRet, std::map<std::string, std::vector<std::string> >& mapMultiSettingsRet);
-#ifdef WIN32
-boost::filesystem::path GetSpecialFolderPath(int nFolder, bool fCreate = true);
-#endif
 boost::filesystem::path GetTempPath();
 void ShrinkDebugFile();
 int GetRandInt(int nMax);
@@ -327,13 +315,9 @@ inline void PrintHex(const std::vector<unsigned char>& vch, const char* pszForma
 inline int64 GetPerformanceCounter()
 {
     int64 nCounter = 0;
-#ifdef WIN32
-    QueryPerformanceCounter((LARGE_INTEGER*)&nCounter);
-#else
     timeval t;
     gettimeofday(&t, NULL);
     nCounter = (int64) t.tv_sec * 1000000 + t.tv_usec;
-#endif
     return nCounter;
 }
 
@@ -367,11 +351,7 @@ void skipspaces(T& it)
 
 inline bool IsSwitchChar(char c)
 {
-#ifdef WIN32
-    return c == '-' || c == '/';
-#else
     return c == '-';
-#endif
 }
 
 /**
@@ -514,12 +494,6 @@ public:
 
 bool NewThread(void(*pfn)(void*), void* parg);
 
-#ifdef WIN32
-inline void SetThreadPriority(int nPriority)
-{
-    SetThreadPriority(GetCurrentThread(), nPriority);
-}
-#else
 
 #define THREAD_PRIORITY_LOWEST          PRIO_MAX
 #define THREAD_PRIORITY_BELOW_NORMAL    2
@@ -533,7 +507,7 @@ inline void SetThreadPriority(int nPriority)
 #ifdef PRIO_THREAD
     setpriority(PRIO_THREAD, 0, nPriority);
 #else
-    setpriority(PRIO_PROCESS, 0, nPriority);
+    //setpriority(PRIO_PROCESS, 0, nPriority);
 #endif
 }
 
@@ -541,7 +515,6 @@ inline void ExitThread(size_t nExitCode)
 {
     pthread_exit((void*)nExitCode);
 }
-#endif
 
 void RenameThread(const char* name);
 
@@ -606,5 +579,4 @@ template <typename Callable> void TraceThread(const char* name,  Callable func)
         PrintException(NULL, name);
     }
 }
-
 #endif

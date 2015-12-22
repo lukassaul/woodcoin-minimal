@@ -8,9 +8,7 @@
 #include "netbase.h"
 #include "main.h"
 
-#ifndef WIN32
 # include <arpa/inet.h>
-#endif
 
 static const char* ppszTypeName[] =
 {
