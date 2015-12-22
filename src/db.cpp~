@@ -9,7 +9,6 @@
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
 
-#include "sys/stat.h"
 
 using namespace std;
 using namespace boost;
