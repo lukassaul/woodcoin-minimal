@@ -312,13 +312,7 @@ std::string HelpMessage()
         "  -maxreceivebuffer=<n>  " + _("Maximum per-connection receive buffer, <n>*1000 bytes (default: 5000)") + "\n" +
         "  -maxsendbuffer=<n>     " + _("Maximum per-connection send buffer, <n>*1000 bytes (default: 1000)") + "\n" +
         "  -bloomfilters          " + _("Allow peers to set bloom filters (default: 1)") + "\n" +
-#ifdef USE_UPNP
-#if USE_UPNP
-        "  -upnp                  " + _("Use UPnP to map the listening port (default: 1 when listening)") + "\n" +
-#else
-        "  -upnp                  " + _("Use UPnP to map the listening port (default: 0)") + "\n" +
-#endif
-#endif
+
         "  -paytxfee=<amt>        " + _("Fee per KB to add to transactions you send") + "\n" +
         "  -mininput=<amt>        " + _("When creating transactions, ignore inputs with value less than this (default: 0.0001)") + "\n" +
 #ifdef QT_GUI
@@ -463,8 +457,6 @@ bool AppInit2(boost::thread_group& threadGroup)
     }
 
     if (!GetBoolArg("-listen", true)) {
-        // do not map ports or try to retrieve public IP when not listening (pointless)
-        SoftSetBoolArg("-upnp", false);
         SoftSetBoolArg("-discover", false);
     }
 

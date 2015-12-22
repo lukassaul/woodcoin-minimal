@@ -18,6 +18,7 @@ using namespace std;
 using namespace boost;
 
 #if defined(NDEBUG)
+
 # error "Woodcoin cannot be compiled without assertions."
 #endif
 
@@ -2950,22 +2951,7 @@ string GetWarnings(string strFor)
         nPriority = 2000;
         strStatusBar = strRPC = _("Warning: Displayed transactions may not be correct! You may need to upgrade, or other nodes may need to upgrade.");
     }
-
- /**   // Alerts
-    {
-        LOCK(cs_mapAlerts);
-        BOOST_FOREACH(PAIRTYPE(const uint256, CAlert)& item, mapAlerts)
-        {
-            const CAlert& alert = item.second;
-            if (alert.AppliesToMe() && alert.nPriority > nPriority)
-            {
-                nPriority = alert.nPriority;
-                strStatusBar = alert.strStatusBar;
-            }
-        }
-    }
-  */
-
+    
     if (strFor == "statusbar")
         return strStatusBar;
     else if (strFor == "rpc")
@@ -3245,13 +3231,6 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
                 addrman.Good(addrFrom);
             }
         }
-
-        // Relay alerts
-     /*   {
-            LOCK(cs_mapAlerts);
-            BOOST_FOREACH(PAIRTYPE(const uint256, CAlert)& item, mapAlerts)
-                item.second.RelayTo(pfrom);
-        } */
 
         pfrom->fSuccessfullyConnected = true;
 
@@ -3642,38 +3621,6 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
         }
     }
 
-/*
-    else if (strCommand == "alert")
-    {
-        CAlert alert;
-        vRecv >> alert;
-
-        uint256 alertHash = alert.GetHash();
-        if (pfrom->setKnown.count(alertHash) == 0)
-        {
-            if (alert.ProcessAlert())
-            {
-                // Relay
-                pfrom->setKnown.insert(alertHash);
-                {
-                    LOCK(cs_vNodes);
-                    BOOST_FOREACH(CNode* pnode, vNodes)
-                        alert.RelayTo(pnode);
-                }
-            }
-            else {
-                // Small DoS penalty so peers that send us lots of
-                // duplicate/expired/invalid-signature/whatever alerts
-                // eventually get banned.
-                // This isn't a Misbehaving(100) (immediate ban) because the
-                // peer might be an older or different implementation with
-                // a different signature key, etc.
-                pfrom->Misbehaving(10);
-            }
-        }
-    }
-*/
-
     else if (!fBloomFilters &&
              (strCommand == "filterload" ||
               strCommand == "filteradd" ||
@@ -4039,17 +3986,6 @@ bool SendMessages(CNode* pto, bool fSendTrickle)
     }
     return true;
 }
-
-
-
-
-
-
-
-
-
-
-
 
 
 
