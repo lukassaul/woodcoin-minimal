@@ -2,6 +2,8 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+// adding WATCH TOKEN to this rpc file 
+
 #include "init.h" // for pwalletMain
 #include "bitcoinrpc.h"
 #include "ui_interface.h"
@@ -70,6 +72,48 @@ Value importprivkey(const Array& params, bool fHelp)
         if (!pwalletMain->AddKeyPubKey(key, pubkey))
             throw JSONRPCError(RPC_WALLET_ERROR, "Error adding key to wallet");
 
+        if (fRescan) {
+            pwalletMain->ScanForWalletTransactions(pindexGenesisBlock, true);
+            pwalletMain->ReacceptWalletTransactions();
+        }
+    }
+
+    return Value::null;
+}
+
+// NEW RPC CALL FOR TOKENS
+Value watchtoken(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() < 3 || params.size() > 4)
+        throw runtime_error(
+            "watchtoken <txid> <utxo-index vout> <label> [rescan=true]\n"
+            "Adds a token to the database and scans blockcchain to see if you have any in your wallet.");
+
+    EnsureWalletIsUnlocked();
+
+    string txid = params[0].get_str();
+    int index = params[1].get_int();	
+    string strLabel = "";
+    strLabel = params[2].get_str();
+
+    // Whether to perform rescan after import
+    bool fRescan = true;
+    if (params.size() > 3)
+        fRescan = params[3].get_bool();
+
+
+    // some error checking needed here for cases of duplicate label or token already added 
+    //  {		} 
+    {
+        LOCK2(cs_main, pwalletMain->cs_wallet);
+
+        pwalletMain->MarkDirty();
+        //pwalletMain->SetAddressBookName(vchAddress, "");  // always use empty char addressbookname for tokens!
+
+        if (!pwalletMain->WatchToken(txid,index,strLabel))
+            throw JSONRPCError(RPC_WALLET_ERROR, "Error adding watch token ID to wallet");
+
+ 
         if (fRescan) {
             pwalletMain->ScanForWalletTransactions(pindexGenesisBlock, true);
             pwalletMain->ReacceptWalletTransactions();

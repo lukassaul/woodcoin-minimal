@@ -139,7 +139,8 @@ OBJS= \
     obj/noui.o \
     obj/skein.o \
     obj/leveldb.o \
-    obj/txdb.o
+    obj/txdb.o \
+    obj/token.o
 
 all: woodcoind
 

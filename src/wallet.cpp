@@ -60,6 +60,22 @@ bool CWallet::AddKeyPubKey(const CKey& secret, const CPubKey &pubkey)
     return true;
 }
 
+
+bool CWallet::WatchToken(std::string txid, int vout, std::string name)
+{
+    /*if (!CCryptoKeyStore::AddKeyToken(secret, pubkey))
+        return false;
+    if (!fFileBacked)
+        return true;
+    if (!IsCrypted()) {
+        return CWalletDB(strWalletFile).WriteKey(pubkey, secret.GetPrivKey());
+    }*/
+    return true;
+}
+
+
+
+
 bool CWallet::AddCryptedKey(const CPubKey &vchPubKey, const vector<unsigned char> &vchCryptedSecret)
 {
     if (!CCryptoKeyStore::AddCryptedKey(vchPubKey, vchCryptedSecret))
@@ -950,6 +966,22 @@ int64 CWallet::GetBalance() const
     return nTotal;
 }
 
+int64 CWallet::GetTokenBalance() const
+{
+    int64 nTotal = 0;
+ /*   {
+        LOCK(cs_wallet);
+        for (map<uint256, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
+        {
+            const CWalletTx* pcoin = &(*it).second;
+            if (pcoin->IsConfirmed())
+                nTotal += pcoin->GetAvailableCredit();
+        }
+    }
+*/
+    return nTotal;
+}
+
 int64 CWallet::GetUnconfirmedBalance() const
 {
     int64 nTotal = 0;
@@ -1449,6 +1481,24 @@ string CWallet::SendMoneyToDestination(const CTxDestination& address, int64 nVal
     scriptPubKey.SetDestination(address);
 
     return SendMoney(scriptPubKey, nValue, wtxNew, fAskFee);
+}
+
+
+string CWallet::SendTokenToDestination(const CTxDestination& address, std::string label, int64 nValue, CWalletTx& wtxNew, bool fAskFee)
+{
+    // Check amount
+  /*  if (nValue <= 0)
+        return _("Invalid amount");
+    if (nValue + nTransactionFee > GetBalance())
+        return _("Insufficient funds");
+
+    // Parse Bitcoin address
+    CScript scriptPubKey;
+    scriptPubKey.SetDestination(address);
+
+    return SendMoney(scriptPubKey, nValue, wtxNew, fAskFee);
+    */
+    return "";
 }
 
 

@@ -303,6 +303,8 @@ public:
 
 	BIGNUM *r1;
 	BIGNUM *s1;
+	r1 = BN_new();
+	s1 = BN_new();
 	
         BN_bin2bn(&p64[0],  32, r1);
         BN_bin2bn(&p64[32], 32, s1);

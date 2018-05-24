@@ -143,6 +143,13 @@ extern json_spirit::Value getaddednodeinfo(const json_spirit::Array& params, boo
 extern json_spirit::Value dumpprivkey(const json_spirit::Array& params, bool fHelp); // in rpcdump.cpp
 extern json_spirit::Value importprivkey(const json_spirit::Array& params, bool fHelp);
 
+
+extern json_spirit::Value watchtoken(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value sendtokentoaddress(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value gettokenbalance(const json_spirit::Array& params, bool fHelp);
+
+
+
 extern json_spirit::Value getgenerate(const json_spirit::Array& params, bool fHelp); // in rpcmining.cpp
 extern json_spirit::Value setgenerate(const json_spirit::Array& params, bool fHelp);
 extern json_spirit::Value getnetworkhashps(const json_spirit::Array& params, bool fHelp);
