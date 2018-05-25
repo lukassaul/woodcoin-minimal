@@ -63,13 +63,26 @@ bool CWallet::AddKeyPubKey(const CKey& secret, const CPubKey &pubkey)
 
 bool CWallet::WatchToken(std::string txid, int vout, std::string name)
 {
-    /*if (!CCryptoKeyStore::AddKeyToken(secret, pubkey))
-        return false;
-    if (!fFileBacked)
-        return true;
-    if (!IsCrypted()) {
-        return CWalletDB(strWalletFile).WriteKey(pubkey, secret.GetPrivKey());
-    }*/
+    // Check if the name is in our map
+    std::map<std::string, CToken*>::iterator mi = tokenMap.find(name);
+        if (mi == tokenMap.end())
+        {
+            return false;  // token name already exists
+        }
+        if (  mi->second->isTokenOutput(txid,vout) )  {
+            return false;
+        }
+    // now check if the txid and vout is already in 
+   // std::map<std::string, CToken*>::iterator mi2 = tokenMap.find(name); // loop through the tokenMap
+          // ent1.first is the first CToken
+       //if (  ent1->second.isTokenOutput(txid,vout) )  return false;
+    ///}
+
+    
+    // now add the CToken to the tokenMap
+    //
+    CToken insertMe = CToken(txid,vout,name);
+    tokenMap.insert(std::make_pair(name, &insertMe) );
     return true;
 }
 

@@ -13,18 +13,19 @@ class CToken
 
 protected:
 
-CTransaction genesisTx;
+std::string genesisTxid;
 int genesisVout;
 std::string label;
-std::map<std::string, CTransaction*> txMap;  // transaction mapped to TXiD
-std::map<std::string, int> voutMap;  // vout mapped to TXiD
+std::map<std::string, std::vector<int> > txMap;  // map of all transactoins which of or type THIS TOKEN <label>
+///std::map<std::string, int> voutMap;  // vout mapped to TXiD
 
 
 public:
 
 bool isTokenTx(std::string txid);
-bool isTokenUtxo(std::string txid, int vout);
+bool isTokenOutput(std::string txid, int vout);
 bool addTokenTransaction(std::string txid, int vout);
+CToken (std::string txid, int vout, std::string name);
 
 };
 

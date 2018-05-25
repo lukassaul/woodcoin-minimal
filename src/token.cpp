@@ -7,26 +7,40 @@
 
 bool CToken::isTokenTx(std::string txid) {
 	
-    std::map<std::string, CTransaction*>::iterator mi = txMap.find(txid);
+    std::map<std::string, std::vector<int> >::iterator mi = txMap.find(txid);
         if (mi != txMap.end())
         {
             return true;
+        }
+    return false;
+}
+
+bool CToken::isTokenOutput(std::string txid, int vout) {
+    
+    std::map<std::string, std::vector<int>>::iterator mi = txMap.find(txid);        
+        if (mi != txMap.end())
+        {
+		     std::vector<int> vec = txMap[txid];  //
+            if (std::find(vec.begin(), vec.end(), vout) != vec.end())		     
+                return true;
+            
         }
     
     return false;
 }
 
-bool CToken::isTokenUtxo(std::string txid, int vout) {
-    
-    std::map<std::string, int>::iterator mi = voutMap.find(txid);
-        if (mi != voutMap.end())
-        {
-		     ///const CWalletTx& prev = (*mi).second;
-		     return true;
-        }
-    
-    return false;
+CToken::CToken(std::string txid, int vout, std::string name) {
+    //std::cout << "inside token constructor" << endl;
+    label = name;
+    genesisTxid = txid;
+    genesisVout = vout;
+    // add the genesis TX to the token map
+    std::vector<int> voutVec;
+    voutVec.push_back(vout);
+    txMap.insert(std::make_pair(txid,voutVec));
 }
+    //std::map<std::string,std::vector<int> > myMap;
+    
 
 
 
