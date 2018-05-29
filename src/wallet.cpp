@@ -83,7 +83,10 @@ bool CWallet::WatchToken(std::string txid, int vout, std::string name)
     //
     CToken insertMe = CToken(txid,vout,name);
     tokenMap.insert(std::make_pair(name, &insertMe) );
+    printf("Added a token called %s", name);
     return true;
+
+    /// rescan should take care of the rest!!  
 }
 
 
@@ -572,15 +575,34 @@ bool CWallet::IsMine(const CTxIn &txin) const
 {
     {
         LOCK(cs_wallet);
+        // check for token first, if so we drop this transaction here it doesn't enter walllet 
+        if (IsToken(txin)) return false;
+        // now continue with usual checks 
         map<uint256, CWalletTx>::const_iterator mi = mapWallet.find(txin.prevout.hash);
         if (mi != mapWallet.end())
         {
             const CWalletTx& prev = (*mi).second;
             if (txin.prevout.n < prev.vout.size())
                 if (IsMine(prev.vout[txin.prevout.n]))
-                    return true;
+                   return true;
         }
     }
+    return false;
+}
+
+bool CWallet::IsToken(const CTxIn &txin) const
+{
+     // also check to make sure it's not a token of any kind, this is ordinary wallet stuff here
+    for (std::map<std::string, CToken*>::const_iterator mi = tokenMap.begin(); mi != tokenMap.end(); ++mi )
+        if (  mi->second->isTokenTx(txin.prevout.hash.ToString()) )    return true;
+    return false;
+}
+
+bool CWallet::IsToken(std::string txid) const 
+{
+     // also check to make sure it's not a token of any kind, this is ordinary wallet stuff here
+    for (std::map<std::string, CToken*>::const_iterator mi = tokenMap.begin(); mi != tokenMap.end(); ++mi )
+        if (  mi->second->isTokenTx(txid) )    return true;
     return false;
 }
 
@@ -814,7 +836,9 @@ bool CWalletTx::WriteToDisk()
 
 // Scan the block chain (starting in pindexStart) for transactions
 // from or to us. If fUpdate is true, found transactions that already
-// exist in the wallet will be updated.
+// exist in the wallet will be updated
+//
+// We are also going to keep track of tokens here as well.
 int CWallet::ScanForWalletTransactions(CBlockIndex* pindexStart, bool fUpdate)
 {
     int ret = 0;
@@ -830,12 +854,44 @@ int CWallet::ScanForWalletTransactions(CBlockIndex* pindexStart, bool fUpdate)
             {
                 if (AddToWalletIfInvolvingMe(tx.GetHash(), tx, &block, fUpdate))
                     ret++;
+                // now check for token
+                AddToTokenIfToken(tx.GetHash(), tx, &block, fUpdate);
             }
             pindex = pindex->pnext;
         }
     }
     return ret;
 }
+
+// we are going to check if this transaction will yiled valiid token inputs for future transactions
+bool CWallet::AddToTokenIfToken(const uint256 &hash, const CTransaction& tx, const CBlock* pblock, bool fUpdate, bool fFindBlock) {
+    // first loop through each token we are tracking 
+    
+    for (std::map<std::string, CToken*>::iterator mi = tokenMap.begin(); mi != tokenMap.end(); ++mi )
+        {
+        std::string name = mi->first;
+        int numIn = tx->vin.size();
+        int numValidIn = 0;
+        
+        // now loop through transaction inputs
+        for (int i=0; i<numIn; i++) {
+            if mi->second->isTokenTx(vin.at(i).GetHash().ToString()) numValidIn++;
+        }    
+        // all but one of the vins need to be of type token
+        if (numValidIn != numIn-1) return false
+
+        // now we check the outputs
+        int numOut = tx->vout.size();
+        
+        int64 valOut = tx->GetValueOut();
+        
+        
+        // now add the TX to the txMap in the token object         
+
+        //if (  mi->second->isTokenTx(txin.prevout.hash) )    return true;
+    return false;
+}
+    
 
 void CWallet::ReacceptWalletTransactions()
 {
@@ -1025,6 +1081,9 @@ int64 CWallet::GetImmatureBalance() const
 }
 
 // populate vCoins with vector of spendable COutputs
+
+// we are going to leave out all tokens here now
+
 void CWallet::AvailableCoins(vector<COutput>& vCoins, bool fOnlyConfirmed, const CCoinControl *coinControl) const
 {
     vCoins.clear();
@@ -1042,6 +1101,9 @@ void CWallet::AvailableCoins(vector<COutput>& vCoins, bool fOnlyConfirmed, const
                 continue;
 
             if (pcoin->IsCoinBase() && pcoin->GetBlocksToMaturity() > 0)
+                continue;
+
+            if (IsToken(pcoin->GetHash().ToString())) 
                 continue;
 
             int nDepth = pcoin->GetDepthInMainChain();

@@ -308,7 +308,7 @@ Value sendtokentoaddress(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 3 || params.size() > 5)
         throw runtime_error(
-            "sendtoaddress <woodcoinaddress> <amount> <tokenLabel> [comment] [comment-to]\n"
+            "sendtokentoaddress <woodcoinaddress> <amount> <tokenLabel> [comment] [comment-to]\n"
             "<amount> is a real and is rounded to the nearest 0.00000001"
             + HelpRequiringPassphrase());
 
@@ -564,7 +564,7 @@ Value gettokenbalance(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 2)
         throw runtime_error(
-            "getbalance [account] [minconf=1]\n"
+            "gettokenbalance [account] [minconf=1]\n"
             "If [account] is not specified, returns the server's total available balance.\n"
             "If [account] is specified, returns the balance in the account.");
 
