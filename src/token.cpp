@@ -29,6 +29,31 @@ bool CToken::isTokenOutput(std::string txid, int vout) {
     return false;
 }
 
+int64 CToken::getValueOfOutput(std::string key) {
+
+    std::map<std::string, int64>::iterator mi = valueMap.find(key);        
+        if (mi != valueMap.end())
+        {		     
+                return mi->second;
+            
+        }
+
+    return 0;
+}
+
+
+void CToken::addTransaction(std::string txid, std::vector<int> vout) {
+    if (!isTokenTx(txid) txMap.insert(std::make_pair(txid, vout));
+}
+
+void CToken::addOutput(std::string key, int64 amount) {
+     valueMap.insert(std::make_pair(key, amount));
+}    
+
+// only set the genesis tx 
+//
+// we don't have the value until we scan 
+//
 CToken::CToken(std::string txid, int vout, std::string name) {
     //std::cout << "inside token constructor" << endl;
     label = name;
@@ -38,8 +63,13 @@ CToken::CToken(std::string txid, int vout, std::string name) {
     std::vector<int> voutVec;
     voutVec.push_back(vout);
     txMap.insert(std::make_pair(txid,voutVec));
+
+    // concatenate the vout for the key
+    // (ONLY ON RESCAN NOW)
+    //valueMap.insert(std::make_pair(txid + std::to_string(vout),amount));
+     
+    
 }
-    //std::map<std::string,std::vector<int> > myMap;
     
 
 

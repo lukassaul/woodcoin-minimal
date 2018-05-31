@@ -81,7 +81,7 @@ bool CWallet::WatchToken(std::string txid, int vout, std::string name)
     
     // now add the CToken to the tokenMap
     //
-    CToken insertMe = CToken(txid,vout,name);
+    CToken insertMe = CToken(txid,vout,name);  // create the genesis token here
     tokenMap.insert(std::make_pair(name, &insertMe) );
     printf("Added a token called %s", name);
     return true;
@@ -575,8 +575,13 @@ bool CWallet::IsMine(const CTxIn &txin) const
 {
     {
         LOCK(cs_wallet);
+        
         // check for token first, if so we drop this transaction here it doesn't enter walllet 
-        if (IsToken(txin)) return false;
+        //if (IsToken(txin)) return false;
+        //  Actually!!!!   If it's a token it is still mine.  Keep it here.  
+        // instead we just don't select it for creating normal coin TX or for normal getBalance
+
+
         // now continue with usual checks 
         map<uint256, CWalletTx>::const_iterator mi = mapWallet.find(txin.prevout.hash);
         if (mi != mapWallet.end())
@@ -595,6 +600,14 @@ bool CWallet::IsToken(const CTxIn &txin) const
      // also check to make sure it's not a token of any kind, this is ordinary wallet stuff here
     for (std::map<std::string, CToken*>::const_iterator mi = tokenMap.begin(); mi != tokenMap.end(); ++mi )
         if (  mi->second->isTokenTx(txin.prevout.hash.ToString()) )    return true;
+    return false;
+}
+
+bool CWallet::IsTokenOutput(std::string txid, int vout_index) const
+{
+     // also check to make sure it's not a token of any kind, this is ordinary wallet stuff here
+    for (std::map<std::string, CToken*>::const_iterator mi = tokenMap.begin(); mi != tokenMap.end(); ++mi )
+        if (  mi->second->isTokenOutput(txin.prevout.hash.ToString(), vout_index) )    return true;
     return false;
 }
 
@@ -863,33 +876,92 @@ int CWallet::ScanForWalletTransactions(CBlockIndex* pindexStart, bool fUpdate)
     return ret;
 }
 
-// we are going to check if this transaction will yiled valiid token inputs for future transactions
-bool CWallet::AddToTokenIfToken(const uint256 &hash, const CTransaction& tx, const CBlock* pblock, bool fUpdate, bool fFindBlock) {
+// we are going to check if this transaction will yield valiid token inputs for future transactions
+//
+// not really a wallet function here but this is where the block chain is scanned so we do it here
+//
+void CWallet::AddToTokenIfToken(const uint256 &hash, const CTransaction& tx, const CBlock* pblock, bool fUpdate, bool fFindBlock) {
     // first loop through each token we are tracking 
     
-    for (std::map<std::string, CToken*>::iterator mi = tokenMap.begin(); mi != tokenMap.end(); ++mi )
-        {
+    for (std::map<std::string, CToken*>::iterator mi = tokenMap.begin(); mi != tokenMap.end(); ++mi )  {
+
         std::string name = mi->first;
-        int numIn = tx->vin.size();
+        int numIn = tx.vin.size();
+        int numOut = tx.vout.size();
         int numValidIn = 0;
-        
-        // now loop through transaction inputs
+        int64 amountOut = 0;
+        int64 amountTokenIn = 0;        
+
+        // loop through transaction inputs
+        // we could stop after finding two non-tokens but we are just going to check them all for now
         for (int i=0; i<numIn; i++) {
-            if mi->second->isTokenTx(vin.at(i).GetHash().ToString()) numValidIn++;
-        }    
-        // all but one of the vins need to be of type token
-        if (numValidIn != numIn-1) return false
+            if (mi->second->isTokenTx(tx.vin.at(i).prevout.hash.ToString())) {
+                numValidIn++;
+                amountTokenIn += mi->second->getValueOfOutput(tx.vin.at(i).prevout.hash.ToString() + std::to_string(tx.vin.at(i).prevout.n));
+            }          
+        }
+    
+        // all but one of the vins need to be of type token otherwise this isn't a token
+        if (numValidIn != numIn-1) continue;
 
         // now we check the outputs
-        int numOut = tx->vout.size();
-        
-        int64 valOut = tx->GetValueOut();
-        
-        
-        // now add the TX to the txMap in the token object         
-
-        //if (  mi->second->isTokenTx(txin.prevout.hash) )    return true;
-    return false;
+        // CTxOut gives us more to work with than CTxIn, in particular public int64 nValue
+        // (there's allso a GetValueOut())
+        //
+        // THere are two possibilities - we either have the outputs sume exactly to all the token value (good)
+        //  OR there is one non-token change address  
+        //  first lets check for the former ...  
+        amountOut = tx.GetValueOut();  
+        if (amountOut==amountTokenIn) {
+            // all these outputs now need to be added
+            // make the vout vector of ints 
+            std::vector<int> voutTemp;
+            for (int j=0; j<numOut; j++) {
+                voutTemp.push_back(j);
+                mi->second->addOutput(tx.GetHash().ToString() + std::to_string(j), tx.vout.at(j).nValue);
+            } 
+            mi->second->addTransaction(tx.GetHash().ToString(), voutTemp);  
+            
+            return;  // successfully added
+        }
+      
+        // now we check for a valid token output with a change transaction 
+        bool foundChange = false;  // we don't want to find more than one way to choose the change output
+        bool doubleFault = false;        
+        int realChange = -1;        
+        for (int k=0; k<numOut; k++) { 
+            
+            // k is our cantidate "change" output 
+            int64 tempTotal = 0;
+            for (int l=0; l<numOut; l++) {
+                if (l!=k) tempTotal+=tx.vout.at(l).nValue;
+            }
+            
+            if (tempTotal==amountTokenIn) {
+                realChange = k;                
+                if (foundChange) {
+                    //we already found one, this is junk now 
+                    doubleFault = true;                    
+                }
+                if (!foundChange) foundChange=true;
+            }
+        }
+        if (!foundChange) continue;  // not a token anymore
+        if (doubleFault) continue;        
+            
+        //still here?  we have a valid change token  
+        // now we create a vector of the proper vout indeces and add it to the token object 
+        std::vector<int> tokenOuts;
+        for (int m=0; m<numOut; m++) {
+            if (m!=realChange)   {
+                mi->second->addOutput(tx.GetHash().ToString() + std::to_string(m), tx.vout.at(m).nValue);
+                tokenOuts.push_back(m);
+            }
+        }
+               
+        // add the vouts to the token's txMap    
+        mi->second->addTransaction(tx.GetHash().ToString(), tokenOuts);
+    }
 }
     
 
@@ -1184,6 +1256,9 @@ bool CWallet::SelectCoinsMinConf(int64 nTargetValue, int nConfMine, int nConfThe
     BOOST_FOREACH(COutput output, vCoins)
     {
         const CWalletTx *pcoin = output.tx;
+
+        if (IsTokenOutput(pcoin->GetHash().ToString(),output.i))
+            continue;  // we don't want to send our precious tokens now 
 
         if (output.nDepth < (pcoin->IsFromMe() ? nConfMine : nConfTheirs))
             continue;
