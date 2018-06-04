@@ -43,7 +43,7 @@ int64 CToken::getValueOfOutput(std::string key) {
 
 
 void CToken::addTransaction(std::string txid, std::vector<int> vout) {
-    if (!isTokenTx(txid) txMap.insert(std::make_pair(txid, vout));
+    if (!isTokenTx(txid)) txMap.insert(std::make_pair(txid, vout));
 }
 
 void CToken::addOutput(std::string key, int64 amount) {

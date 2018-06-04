@@ -595,29 +595,39 @@ bool CWallet::IsMine(const CTxIn &txin) const
     return false;
 }
 
-bool CWallet::IsToken(const CTxIn &txin) const
+/*bool CWallet::IsToken(const CTxIn &txin) const
 {
      // also check to make sure it's not a token of any kind, this is ordinary wallet stuff here
     for (std::map<std::string, CToken*>::const_iterator mi = tokenMap.begin(); mi != tokenMap.end(); ++mi )
         if (  mi->second->isTokenTx(txin.prevout.hash.ToString()) )    return true;
     return false;
-}
+}*/
 
-bool CWallet::IsTokenOutput(std::string txid, int vout_index) const
+bool CWallet::IsToken(std::string txid, int vout_index) const
 {
      // also check to make sure it's not a token of any kind, this is ordinary wallet stuff here
     for (std::map<std::string, CToken*>::const_iterator mi = tokenMap.begin(); mi != tokenMap.end(); ++mi )
-        if (  mi->second->isTokenOutput(txin.prevout.hash.ToString(), vout_index) )    return true;
+        if (  mi->second->isTokenOutput(txid, vout_index) )    return true;
+    return false;
+}
+bool CWallet::IsToken(std::string txid, int vout_index, std::string label) const
+{
+     // also check to make sure it's not a token of any kind, this is ordinary wallet stuff here
+    std::map<std::string, CToken*>::const_iterator mi = tokenMap.find(label); 
+
+        if (mi!= tokenMap.end())        
+            if (mi->second->isTokenOutput(txid,vout_index))    return true;
+
     return false;
 }
 
-bool CWallet::IsToken(std::string txid) const 
+/*bool CWallet::IsToken(std::string txid) const 
 {
      // also check to make sure it's not a token of any kind, this is ordinary wallet stuff here
     for (std::map<std::string, CToken*>::const_iterator mi = tokenMap.begin(); mi != tokenMap.end(); ++mi )
         if (  mi->second->isTokenTx(txid) )    return true;
     return false;
-}
+}*/
 
 int64 CWallet::GetDebit(const CTxIn &txin) const
 {
@@ -895,7 +905,7 @@ void CWallet::AddToTokenIfToken(const uint256 &hash, const CTransaction& tx, con
         // loop through transaction inputs
         // we could stop after finding two non-tokens but we are just going to check them all for now
         for (int i=0; i<numIn; i++) {
-            if (mi->second->isTokenTx(tx.vin.at(i).prevout.hash.ToString())) {
+            if (mi->second->isTokenOutput(tx.vin.at(i).prevout.hash.ToString() , tx.vin.at(i).prevout.n)) {
                 numValidIn++;
                 amountTokenIn += mi->second->getValueOfOutput(tx.vin.at(i).prevout.hash.ToString() + std::to_string(tx.vin.at(i).prevout.n));
             }          
@@ -1156,9 +1166,10 @@ int64 CWallet::GetImmatureBalance() const
 
 // we are going to leave out all tokens here now
 
-void CWallet::AvailableCoins(vector<COutput>& vCoins, bool fOnlyConfirmed, const CCoinControl *coinControl) const
+void CWallet::AvailableCoins(vector<COutput>& vCoins, bool fOnlyConfirmed, std::string token, const CCoinControl *coinControl) const
 {
     vCoins.clear();
+    bool aToken = !(token=="");
 
     {
         LOCK(cs_wallet);
@@ -1175,18 +1186,24 @@ void CWallet::AvailableCoins(vector<COutput>& vCoins, bool fOnlyConfirmed, const
             if (pcoin->IsCoinBase() && pcoin->GetBlocksToMaturity() > 0)
                 continue;
 
-            if (IsToken(pcoin->GetHash().ToString())) 
-                continue;
-
             int nDepth = pcoin->GetDepthInMainChain();
             if (nDepth < 0)
                 continue;
 
             for (unsigned int i = 0; i < pcoin->vout.size(); i++) {
-                if (!(pcoin->IsSpent(i)) && IsMine(pcoin->vout[i]) &&
+                bool takeThisVout = true;                
+                if (!aToken) {
+                    if (IsToken(pcoin->GetHash().ToString(), pcoin->vout[i].nValue)) 
+                        takeThisVout = false;
+                }    
+                else if (!IsToken(pcoin->GetHash().ToString(), pcoin->vout[i].nValue, token)) 
+                        takeThisVout = false;
+                
+                if (takeThisVout && !(pcoin->IsSpent(i)) && IsMine(pcoin->vout[i]) &&
                     !IsLockedCoin((*it).first, i) && pcoin->vout[i].nValue >= nMinimumInputValue &&
                     (!coinControl || !coinControl->HasSelected() || coinControl->IsSelected((*it).first, i))) 
-                    vCoins.push_back(COutput(pcoin, i, nDepth));
+    
+                       vCoins.push_back(COutput(pcoin, i, nDepth));
             }
         }
     }
@@ -1238,6 +1255,8 @@ static void ApproximateBestSubset(vector<pair<int64, pair<const CWalletTx*,unsig
     }
 }
 
+//bgrrblygby
+
 bool CWallet::SelectCoinsMinConf(int64 nTargetValue, int nConfMine, int nConfTheirs, vector<COutput> vCoins,
                                  set<pair<const CWalletTx*,unsigned int> >& setCoinsRet, int64& nValueRet) const
 {
@@ -1257,8 +1276,8 @@ bool CWallet::SelectCoinsMinConf(int64 nTargetValue, int nConfMine, int nConfThe
     {
         const CWalletTx *pcoin = output.tx;
 
-        if (IsTokenOutput(pcoin->GetHash().ToString(),output.i))
-            continue;  // we don't want to send our precious tokens now 
+//        if (IsToken(pcoin->GetHash().ToString(),output.i))
+  //          continue;  // we don't want to send our precious tokens now 
 
         if (output.nDepth < (pcoin->IsFromMe() ? nConfMine : nConfTheirs))
             continue;
@@ -1340,10 +1359,11 @@ bool CWallet::SelectCoinsMinConf(int64 nTargetValue, int nConfMine, int nConfThe
     return true;
 }
 
-bool CWallet::SelectCoins(int64 nTargetValue, set<pair<const CWalletTx*,unsigned int> >& setCoinsRet, int64& nValueRet, const CCoinControl* coinControl) const
+bool CWallet::SelectCoins(int64 nTargetValue, set<pair<const CWalletTx*,unsigned int> >& setCoinsRet, int64& nValueRet, 
+                                        std::string token, const CCoinControl* coinControl) const
 {
     vector<COutput> vCoins;
-    AvailableCoins(vCoins, true, coinControl);
+    AvailableCoins(vCoins, true, token, coinControl);
     
     // coin control -> return all selected outputs (we want all selected to go into the transaction for sure)
     if (coinControl && coinControl->HasSelected())
@@ -1365,9 +1385,12 @@ bool CWallet::SelectCoins(int64 nTargetValue, set<pair<const CWalletTx*,unsigned
 
 
 bool CWallet::CreateTransaction(const vector<pair<CScript, int64> >& vecSend,
-                                CWalletTx& wtxNew, CReserveKey& reservekey, int64& nFeeRet, std::string& strFailReason, const CCoinControl* coinControl)
+                                CWalletTx& wtxNew, CReserveKey& reservekey, CReserveKey& reservekey2, 
+                                int64& nFeeRet, std::string& strFailReason, std::string token, const CCoinControl* coinControl)
 {
     int64 nValue = 0;
+    int64 nTotalValue = 0;
+    bool isToken = !(token=="");
     BOOST_FOREACH (const PAIRTYPE(CScript, int64)& s, vecSend)
     {
         if (nValue < 0)
@@ -1394,29 +1417,48 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64> >& vecSend,
                 wtxNew.vin.clear();
                 wtxNew.vout.clear();
                 wtxNew.fFromMe = true;
-
-                int64 nTotalValue = nValue + nFeeRet;
+                
+                if (isToken) nTotalValue = nValue;  // we don't want to pay fee in tokens we take care of that later
+                else int64 nTotalValue = nValue + nFeeRet;  // we do want to pay fee if we are sending LOG
+                
                 double dPriority = 0;
                 // vouts to the payees
                 BOOST_FOREACH (const PAIRTYPE(CScript, int64)& s, vecSend)
                 {
                     CTxOut txout(s.second, s.first);
-                    if (txout.IsDust())
+                    // isDust always returns false now so we don't need this 
+                    /*if (txout.IsDust())
                     {
                         strFailReason = _("Transaction amount too small");
                         return false;
-                    }
+                    }*/
                     wtxNew.vout.push_back(txout);
                 }
 
                 // Choose coins to use
                 set<pair<const CWalletTx*,unsigned int> > setCoins;
                 int64 nValueIn = 0;
-                if (!SelectCoins(nTotalValue, setCoins, nValueIn, coinControl))
+
+                // choose our primary coin or token for the transaction   
+                if (!SelectCoins(nTotalValue, setCoins, nValueIn, token, coinControl))
                 {
-                    strFailReason = _("Insufficient funds");
+                    if (isToken) strFailReason = _("Insufficient tokens");
+                    else strFailReason = _("Insufficient funds");
                     return false;
                 }
+
+                // if the transaction sends token, we need to select some regular coin for the tx fee
+                set<pair<const CWalletTx*,unsigned int> > setFeeCoins;
+                int64 nValueInFee = 0;
+                if (isToken) {
+                    if (!SelectCoins(nFeeRet, setFeeCoins, nValueInFee, "", coinControl))
+                    {
+                        strFailReason = _("Insufficient fee funds for token tranasction");
+                        return false;
+                    }
+                }   
+                    
+                
                 BOOST_FOREACH(PAIRTYPE(const CWalletTx*, unsigned int) pcoin, setCoins)
                 {
                     int64 nCredit = pcoin.first->vout[pcoin.second].nValue;
@@ -1425,8 +1467,22 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64> >& vecSend,
                     //a chance at a free transaction.
                     dPriority += (double)nCredit * (pcoin.first->GetDepthInMainChain()+1);
                 }
-
-                int64 nChange = nValueIn - nValue - nFeeRet;
+                if (isToken) {
+                     BOOST_FOREACH(PAIRTYPE(const CWalletTx*, unsigned int) pcoin, setFeeCoins)
+                    {
+                        int64 nCredit = pcoin.first->vout[pcoin.second].nValue;
+                        //The priority after the next block (depth+1) is used instead of the current,
+                        //reflecting an assumption the user would accept a bit more delay for
+                        //a chance at a free transaction.
+                        dPriority += (double)nCredit * (pcoin.first->GetDepthInMainChain()+1);
+                    }
+                }
+                
+                int64 nChange = nValueIn - nTotalValue - nFeeRet;  // this is the "main" change, regular change for regular tx, token change for token tx
+                if (isToken) nChange = nValueIn - nTotalValue; // no fee paid in token
+                int64 feeChange = nValueInFee - nFeeRet;  // change in regular coin 
+                                
+    
                 // if sub-cent change is required, the fee must be raised to at least nMinTxFee
                 // or until nChange becomes zero
                 // NOTE: this depends on the exact behaviour of GetMinFee
@@ -1467,22 +1523,50 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64> >& vecSend,
 
                     CTxOut newTxOut(nChange, scriptChange);
 
-                    // Never create dust outputs; if we would, just
-                    // add the dust to the fee.
-                    if (newTxOut.IsDust())
-                    {
-                        nFeeRet += nChange;
-                        reservekey.ReturnKey();
-                    }
-                    else
-                    {
-                        // Insert change txn at random position:
-                        vector<CTxOut>::iterator position = wtxNew.vout.begin()+GetRandInt(wtxNew.vout.size()+1);
-                        wtxNew.vout.insert(position, newTxOut);
-                    }
+                    vector<CTxOut>::iterator position = wtxNew.vout.begin()+GetRandInt(wtxNew.vout.size()+1);
+                    wtxNew.vout.insert(position, newTxOut);
+                    
                 }
                 else
                     reservekey.ReturnKey();
+
+                if (feeChange > 0)
+                {
+                    // Fill a vout to ourself
+                    // TODO: pass in scriptChange instead of reservekey so
+                    // change transaction isn't always pay-to-bitcoin-address
+                    CScript scriptChange;
+                    
+                    // coin control: send change to custom address
+                   // if (coinControl && !boost::get<CNoDestination>(&coinControl->destChange))
+                   //     scriptChange.SetDestination(coinControl->destChange);
+                        
+                    // no coin control: send change to newly generated address
+                    //else
+                    {
+                        // Note: We use a new key here to keep it from being obvious which side is the change.
+                        //  The drawback is that by not reusing a previous key, the change may be lost if a
+                        //  backup is restored, if the backup doesn't have the new private key for the change.
+                        //  If we reused the old key, it would be possible to add code to look for and
+                        //  rediscover unknown transactions that were written with keys of ours to recover
+                        //  post-backup change.
+
+                        // Reserve a new key pair from key pool
+                        CPubKey vchPubKey;
+                        assert(reservekey2.GetReservedKey(vchPubKey)); // should never fail, as we just unlocked
+
+                        scriptChange.SetDestination(vchPubKey.GetID());
+                    }
+
+                    CTxOut newTxOut(feeChange, scriptChange);
+
+                    vector<CTxOut>::iterator position = wtxNew.vout.begin()+GetRandInt(wtxNew.vout.size()+1);
+                    wtxNew.vout.insert(position, newTxOut);
+                    
+                }
+                else
+                    reservekey2.ReturnKey();
+
 
                 // Fill vin
                 BOOST_FOREACH(const PAIRTYPE(const CWalletTx*,unsigned int)& coin, setCoins)
@@ -1496,6 +1580,16 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64> >& vecSend,
                         strFailReason = _("Signing transaction failed");
                         return false;
                     }
+
+                if (isToken) {
+
+                    BOOST_FOREACH(const PAIRTYPE(const CWalletTx*,unsigned int)& coin, setFeeCoins)
+                        if (!SignSignature(*this, *coin.first, wtxNew, nIn++))
+                        {
+                            strFailReason = _("Signing transaction failed");
+                            return false;
+                        }
+                }
 
                 // Limit size
                 unsigned int nBytes = ::GetSerializeSize(*(CTransaction*)&wtxNew, SER_NETWORK, PROTOCOL_VERSION);
@@ -1528,11 +1622,12 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64> >& vecSend,
 }
 
 bool CWallet::CreateTransaction(CScript scriptPubKey, int64 nValue,
-                                CWalletTx& wtxNew, CReserveKey& reservekey, int64& nFeeRet, std::string& strFailReason, const CCoinControl* coinControl)
+                                CWalletTx& wtxNew, CReserveKey& reservekey, CReserveKey& reservekey2, int64& nFeeRet, 
+                                std::string& strFailReason, std::string token, const CCoinControl* coinControl)
 {
     vector< pair<CScript, int64> > vecSend;
     vecSend.push_back(make_pair(scriptPubKey, nValue));
-    return CreateTransaction(vecSend, wtxNew, reservekey, nFeeRet, strFailReason, coinControl);
+    return CreateTransaction(vecSend, wtxNew, reservekey, reservekey2, nFeeRet, strFailReason, token, coinControl);
 }
 
 // Call after CreateTransaction unless you want to abort
@@ -1587,9 +1682,10 @@ bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey)
 
 
 
-string CWallet::SendMoney(CScript scriptPubKey, int64 nValue, CWalletTx& wtxNew, bool fAskFee)
+string CWallet::SendMoney(CScript scriptPubKey, int64 nValue, CWalletTx& wtxNew, std::string tokenLabel, bool fAskFee)
 {
     CReserveKey reservekey(this);
+    CReserveKey reservekey2(this);
     int64 nFeeRequired;
 
     if (IsLocked())
@@ -1599,7 +1695,6 @@ string CWallet::SendMoney(CScript scriptPubKey, int64 nValue, CWalletTx& wtxNew,
         return strError;
     }
     string strError;
-    if (!CreateTransaction(scriptPubKey, nValue, wtxNew, reservekey, nFeeRequired, strError))
     {
         if (nValue + nFeeRequired > GetBalance())
             strError = strprintf(_("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds!"), FormatMoney(nFeeRequired).c_str());
@@ -1630,25 +1725,25 @@ string CWallet::SendMoneyToDestination(const CTxDestination& address, int64 nVal
     CScript scriptPubKey;
     scriptPubKey.SetDestination(address);
 
-    return SendMoney(scriptPubKey, nValue, wtxNew, fAskFee);
+    return SendMoney(scriptPubKey, nValue, wtxNew, "", fAskFee);
 }
 
 
-string CWallet::SendTokenToDestination(const CTxDestination& address, std::string label, int64 nValue, CWalletTx& wtxNew, bool fAskFee)
+std::string CWallet::SendTokenToDestination(const CTxDestination& address, std::string label, int64 nValue, CWalletTx& wtxNew, bool fAskFee)
 {
     // Check amount
-  /*  if (nValue <= 0)
+    if (nValue <= 0)
         return _("Invalid amount");
-    if (nValue + nTransactionFee > GetBalance())
-        return _("Insufficient funds");
+   
+    // if (nValue + nTransactionFee > GetBalance())
+    //    return _("Insufficient funds");   
+    // handled later..  
 
     // Parse Bitcoin address
     CScript scriptPubKey;
     scriptPubKey.SetDestination(address);
 
-    return SendMoney(scriptPubKey, nValue, wtxNew, fAskFee);
-    */
-    return "";
+    return SendMoney(scriptPubKey, nValue, wtxNew, label, fAskFee);
 }
 
 

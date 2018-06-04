@@ -312,21 +312,31 @@ Value sendtokentoaddress(const Array& params, bool fHelp)
             "<amount> is a real and is rounded to the nearest 0.00000001"
             + HelpRequiringPassphrase());
 
-    CBitcoinAddress address(params[0].get_str());
+    std::string address_string = params[0].get_str();
+    CBitcoinAddress address(address_string);
     if (!address.IsValid())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Woodcoin address");
-
+   
     // Amount
     int64 nAmount = AmountFromValue(params[1]);
 
     string tokenLabel = params[2].get_str();
 
+    // check to see if we are watching this token
+    std::map<std::string, CToken*>::iterator mi = pwalletMain->tokenMap.find(address_string);
+    if (mi != pwalletMain->tokenMap.end())
+        throw runtime_error(
+            "sendtokentoaddress <woodcoinaddress> <amount> <tokenLabel> [comment] [comment-to]\n"
+            "<tokenLabel> was not found in list of currently watched tokens."
+            + HelpRequiringPassphrase());
+            
+
     // Wallet comments
     CWalletTx wtx;
-    if (params.size() > 2 && params[2].type() != null_type && !params[2].get_str().empty())
-        wtx.mapValue["comment"] = params[2].get_str();
     if (params.size() > 3 && params[3].type() != null_type && !params[3].get_str().empty())
-        wtx.mapValue["to"]      = params[3].get_str();
+        wtx.mapValue["comment"] = params[3].get_str();
+    if (params.size() > 4 && params[4].type() != null_type && !params[4].get_str().empty())
+        wtx.mapValue["to"]      = params[4].get_str();
 
     if (pwalletMain->IsLocked())
         throw JSONRPCError(RPC_WALLET_UNLOCK_NEEDED, "Error: Please enter the wallet passphrase with walletpassphrase first.");
@@ -802,9 +812,11 @@ Value sendmany(const Array& params, bool fHelp)
 
     // Send
     CReserveKey keyChange(pwalletMain);
+    CReserveKey keyChange2(pwalletMain);
     int64 nFeeRequired = 0;
     string strFailReason;
-    bool fCreated = pwalletMain->CreateTransaction(vecSend, wtx, keyChange, nFeeRequired, strFailReason);
+    std::string empty = "";
+    bool fCreated = pwalletMain->CreateTransaction(vecSend, wtx, keyChange, keyChange2, nFeeRequired, strFailReason, empty);
     if (!fCreated)
         throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, strFailReason);
     if (!pwalletMain->CommitTransaction(wtx, keyChange))
