@@ -12,10 +12,6 @@ class CToken
 
 protected:
 
-std::string genesisTxid;
-int genesisVout;
-int64 genesisValue;
-std::string label;
 std::map<std::string, std::vector<int> > txMap;  // map of all transactoins which of or type THIS TOKEN <label>
 std::map<std::string, int64> valueMap;  //  the value of each of the above vouts.  the key is the txid with the vout concatenated
 
@@ -24,6 +20,12 @@ std::map<std::string, int64> valueMap;  //  the value of each of the above vouts
 
 public:
 
+std::string genesisTxid;
+int genesisVout;
+int64 genesisValue;
+std::string label;
+int numOutputs;
+int getNumberOfTransactions();
 bool isTokenTx(std::string txid);
 bool isTokenOutput(std::string txid, int vout);
 void addTransaction(std::string txid, std::vector<int> vout);

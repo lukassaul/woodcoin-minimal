@@ -63,13 +63,19 @@ bool CWallet::AddKeyPubKey(const CKey& secret, const CPubKey &pubkey)
 
 bool CWallet::WatchToken(std::string txid, int vout, std::string name)
 {
+    printf("Beginning to watch token %s %i %s \n", txid.c_str(), vout, name.c_str());    
     // Check if the name is in our map
     std::map<std::string, CToken*>::iterator mi = tokenMap.find(name);
-        if (mi == tokenMap.end())
+        if (mi != tokenMap.end())
         {
+            printf("Token name %s already exists, cannot re-watch \n", name.c_str());
             return false;  // token name already exists
         }
-        if (  mi->second->isTokenOutput(txid,vout) )  {
+
+    //std::map<std::string, CToken*>::iterator mi = tokenMap.find(name);
+        if (IsToken(txid,vout)) {
+    //    if (mi->second->isTokenOutput(txid,vout) )  {
+            printf("Genesis token proposed for %s already exists, cannot re-watch \n", name.c_str());
             return false;
         }
     // now check if the txid and vout is already in 
@@ -83,7 +89,7 @@ bool CWallet::WatchToken(std::string txid, int vout, std::string name)
     //
     CToken insertMe = CToken(txid,vout,name);  // create the genesis token here
     tokenMap.insert(std::make_pair(name, &insertMe) );
-    printf("Added a token called %s", name);
+    printf("Added a token called %s \n", name.c_str());
     return true;
 
     /// rescan should take care of the rest!!  
@@ -605,11 +611,11 @@ bool CWallet::IsMine(const CTxIn &txin) const
 
 bool CWallet::IsToken(std::string txid, int vout_index) const
 {
-     // also check to make sure it's not a token of any kind, this is ordinary wallet stuff here
     for (std::map<std::string, CToken*>::const_iterator mi = tokenMap.begin(); mi != tokenMap.end(); ++mi )
         if (  mi->second->isTokenOutput(txid, vout_index) )    return true;
     return false;
 }
+
 bool CWallet::IsToken(std::string txid, int vout_index, std::string label) const
 {
      // also check to make sure it's not a token of any kind, this is ordinary wallet stuff here
@@ -886,92 +892,143 @@ int CWallet::ScanForWalletTransactions(CBlockIndex* pindexStart, bool fUpdate)
     return ret;
 }
 
+int debugToken = 0;
+
 // we are going to check if this transaction will yield valiid token inputs for future transactions
 //
 // not really a wallet function here but this is where the block chain is scanned so we do it here
 //
 void CWallet::AddToTokenIfToken(const uint256 &hash, const CTransaction& tx, const CBlock* pblock, bool fUpdate, bool fFindBlock) {
+
+    debugToken++;
+    if (debugToken < 10)  printf("called addToTokenIfToken %s \n", tx.ToString().c_str());
     // first loop through each token we are tracking 
+    //printf("called addToTokenIfToken %s \n", tx.ToString().c_str());
     
-    for (std::map<std::string, CToken*>::iterator mi = tokenMap.begin(); mi != tokenMap.end(); ++mi )  {
 
-        std::string name = mi->first;
-        int numIn = tx.vin.size();
-        int numOut = tx.vout.size();
-        int numValidIn = 0;
-        int64 amountOut = 0;
-        int64 amountTokenIn = 0;        
+    int numValidIn = 0;
+    int64 amountTokenIn = 0;
+    int numIn = tx.vin.size();
+    int numOut = tx.vout.size();
+    std::string tokenName = "";
+    int64 amountOut = 0;
+    amountOut = tx.GetValueOut();
+    int64 amountOutMan = 0;
+    if (numIn<1) return;   
+    if (amountOut<=0) return;
 
-        // loop through transaction inputs
-        // we could stop after finding two non-tokens but we are just going to check them all for now
-        for (int i=0; i<numIn; i++) {
-            if (mi->second->isTokenOutput(tx.vin.at(i).prevout.hash.ToString() , tx.vin.at(i).prevout.n)) {
+    if (debugToken<10) printf("should be same hash: %s \n" , tx.GetHash().ToString().c_str());
+    if (debugToken<10) printf("should be prev hash: %s \n" , tx.vin.at(0).prevout.hash.ToString().c_str());
+    if (debugToken<10) printf("numIn, numOut, amountOut: %i %i %i \n" , numIn, numOut, std::to_string(amountOut).c_str());
+
+    // loop through transaction inputs first 
+    for (int i=0; i<numIn; i++) {
+        if (tx.vin.at(i).prevout.n > -1) {
+            if (IsToken(tx.vin.at(i).prevout.hash.ToString() , tx.vin.at(i).prevout.n)) {
+                tokenName = GetTokenName(tx.vin.at(i).prevout.hash.ToString(), tx.vin.at(i).prevout.n);
                 numValidIn++;
-                amountTokenIn += mi->second->getValueOfOutput(tx.vin.at(i).prevout.hash.ToString() + std::to_string(tx.vin.at(i).prevout.n));
-            }          
-        }
-    
-        // all but one of the vins need to be of type token otherwise this isn't a token
-        if (numValidIn != numIn-1) continue;
+                amountTokenIn += GetTokenOutputValue(tx.vin.at(i).prevout.hash.ToString() , tx.vin.at(i).prevout.n);
+                printf("found a tx witn an input that is a token %s with amountin %s \n", tx.vin.at(i).prevout.hash.ToString(), std::to_string(amountTokenIn).c_str());
+            }
+        }          
+    }
+           
+    if (debugToken<10) printf("numValidIn, amountTokoenIn: %i %s \n" , numValidIn, std::to_string(amountTokenIn).c_str());
+    // all but one of the vins need to be of type token otherwise this isn't a token
+    if (numValidIn != numIn-1 || numValidIn<1)  return; // no need to add this, the inputs aon't look like a token transaction 
+    // first check if we have genesis tx, we then need to add the values because watchtoken doesn't do that for us 
+   
+    if (amountTokenIn<1) {
+        printf("amountTokenIn < 1 wtf it is %s \n", std::to_string(amountTokenIn).c_str());
+        return;
+    }
+ 
+    // Do a check to make sure we don't have a genesis TX here.  
+    for (std::map<std::string, CToken*>::iterator mi = tokenMap.begin(); mi != tokenMap.end(); ++mi )  {
+        if (mi->second->genesisTxid==tx.GetHash().ToString()) {
+            printf("found a genesis txid while scanning %s %s \n", mi->second->label.c_str(), tx.GetHash().ToString().c_str());
+            std::string key = mi->second->genesisTxid + std::to_string(mi->second->genesisVout);
+            // now we need to set the value, provided it isn't already set  
+            if (!IsToken(mi->second->genesisTxid,mi->second->genesisVout))  mi->second->addOutput(key, amountOut);
+            return;  // we are done with this transaction, no need to add anything else      
+        } 
+    }
+    // loop through the outputs to tally  
+    for (int j=0; j<numOut; j++) {
+        amountOutMan += tx.vout.at(j).nValue;        
+    } 
+    printf("amoutoutMan  %s amountout %s \n", std::to_string(amountOutMan).c_str(), std::to_string(amountOut).c_str());
 
-        // now we check the outputs
-        // CTxOut gives us more to work with than CTxIn, in particular public int64 nValue
-        // (there's allso a GetValueOut())
-        //
-        // THere are two possibilities - we either have the outputs sume exactly to all the token value (good)
-        //  OR there is one non-token change address  
-        //  first lets check for the former ...  
-        amountOut = tx.GetValueOut();  
-        if (amountOut==amountTokenIn) {
+    // if totall output is exactly equal to token output, this means we have token transaction of type I
+    if (amountOut==amountTokenIn  && amountOutMan==amountOut) {
+        for (std::map<std::string, CToken*>::iterator mi = tokenMap.begin(); mi != tokenMap.end(); ++mi )  { 
+
+            printf("Found a token transaction of type 1 %s \n", tx.GetHash().ToString().c_str());
             // all these outputs now need to be added
-            // make the vout vector of ints 
+            // make the vout vector of ints as well
             std::vector<int> voutTemp;
             for (int j=0; j<numOut; j++) {
                 voutTemp.push_back(j);
-                mi->second->addOutput(tx.GetHash().ToString() + std::to_string(j), tx.vout.at(j).nValue);
+                if (!IsToken(tx.GetHash().ToString(),j) mi->second->addOutput(tx.GetHash().ToString() + std::to_string(j), tx.vout.at(j).nValue);
             } 
-            mi->second->addTransaction(tx.GetHash().ToString(), voutTemp);  
-            
+            if (!IsToken(tx.GetHash().ToString())  mi->second->addTransaction(tx.GetHash().ToString(), voutTemp);  
             return;  // successfully added
         }
-      
-        // now we check for a valid token output with a change transaction 
-        bool foundChange = false;  // we don't want to find more than one way to choose the change output
-        bool doubleFault = false;        
-        int realChange = -1;        
-        for (int k=0; k<numOut; k++) { 
-            
-            // k is our cantidate "change" output 
-            int64 tempTotal = 0;
-            for (int l=0; l<numOut; l++) {
-                if (l!=k) tempTotal+=tx.vout.at(l).nValue;
-            }
-            
-            if (tempTotal==amountTokenIn) {
-                realChange = k;                
-                if (foundChange) {
-                    //we already found one, this is junk now 
-                    doubleFault = true;                    
-                }
-                if (!foundChange) foundChange=true;
-            }
-        }
-        if (!foundChange) continue;  // not a token anymore
-        if (doubleFault) continue;        
-            
-        //still here?  we have a valid change token  
-        // now we create a vector of the proper vout indeces and add it to the token object 
-        std::vector<int> tokenOuts;
-        for (int m=0; m<numOut; m++) {
-            if (m!=realChange)   {
-                mi->second->addOutput(tx.GetHash().ToString() + std::to_string(m), tx.vout.at(m).nValue);
-                tokenOuts.push_back(m);
-            }
-        }
-               
-        // add the vouts to the token's txMap    
-        mi->second->addTransaction(tx.GetHash().ToString(), tokenOuts);
     }
+
+    // now we look for type II transaction (with regular change)
+
+   // for (std::map<std::string, CToken*>::iterator mi = tokenMap.begin(); mi != tokenMap.end(); ++mi )  {        
+
+    //std::string name = mi->first;
+    bool isType1 = false;
+    bool isType2 = false;
+    bool valid = true;   //  once this flag goes off we skip to next token
+    std::string key = "";
+
+      
+    // now we check for a valid token output with a change transaction 
+    bool foundChange = false;  // we don't want to find more than one way to choose the change output
+    bool doubleFault = false;        
+    int realChange = -1;        
+    for (int k=0; k<numOut; k++) { 
+        //printf("looping throught k in numout k=%i",k);
+        // k is our cantidate "change" output 
+        int64 tempTotal = 0;
+        for (int l=0; l<numOut; l++) {
+            if (l!=k) tempTotal+=tx.vout.at(l).nValue;
+        }
+        
+        if (tempTotal==amountTokenIn) {
+            realChange = k;                
+            if (foundChange) {
+                printf("found a token transaction with ambiguous output type.. dropping %s %s \n", name, tx.GetHash().ToString()); 
+                //we already found one, this is junk now 
+                doubleFault = true;   
+                return;                 
+            }
+            if (!foundChange) foundChange=true;
+        }
+    }
+
+    //still here?  we have a valid change token  
+    // now we create a vector of the proper vout indeces and add it to the token object 
+    if (foundChange && !doubleFault) {
+        
+        for (std::map<std::string, CToken*>::iterator mi = tokenMap.begin(); mi != tokenMap.end(); ++mi )  {
+            if (mi->second->isTokenOutput(tx.vin.at(==tx.GetHash().ToString()) {
+            CToken
+            std::vector<int> tokenOuts;
+            for (int m=0; m<numOut; m++) {
+                if (m!=realChange)   {
+                    mi->second->addOutput(tx.GetHash().ToString() + std::to_string(m), tx.vout.at(m).nValue);
+                    tokenOuts.push_back(m);
+                }
+            }
+            mi->second->addTransaction(tx.GetHash().ToString(), tokenOuts);
+        }
+    }
+       // printf("Finished main loop of adToTokenIfToken \n ");
 }
     
 
@@ -1110,7 +1167,8 @@ int64 CWallet::GetBalance() const
         {
             const CWalletTx* pcoin = &(*it).second;
             if (pcoin->IsConfirmed())
-                nTotal += pcoin->GetAvailableCredit();
+                if(!IsToken(pcoin->GetHash().ToString(),pcoin->nIndex)) // don't add tokens to balance now 
+                    nTotal += pcoin->GetAvailableCredit();
         }
     }
 
@@ -1120,18 +1178,68 @@ int64 CWallet::GetBalance() const
 int64 CWallet::GetTokenBalance() const
 {
     int64 nTotal = 0;
- /*   {
+    {
         LOCK(cs_wallet);
         for (map<uint256, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
         {
             const CWalletTx* pcoin = &(*it).second;
             if (pcoin->IsConfirmed())
-                nTotal += pcoin->GetAvailableCredit();
+                if (IsToken(pcoin->GetHash().ToString(),pcoin->nIndex)) {  // only add tokens to balance 
+                        nTotal += pcoin->GetAvailableCredit();
+            }
         }
     }
-*/
+
     return nTotal;
 }
+
+std::string CWallet::GetTokenName(std::string txid, int index) const
+{
+    std::string tbr = "";
+    for (std::map<std::string, CToken*>::const_iterator mi = tokenMap.begin(); mi != tokenMap.end(); ++mi ) {
+        if (  mi->second->isTokenOutput(txid, index) )    return mi->second->label;
+    }
+    printf("GetTokenName called with bunk arguments %s %i \n", txid.c_str(), index);
+    return tbr;
+}
+
+int64 CWallet::GetTokenBalance(std::string name) const
+{
+    int64 nTotal = 0;
+    {
+        LOCK(cs_wallet);
+        
+       // std::map<std::string, CToken*>::iterator mi = tokenMap.find(name);
+        
+        if (name=="") return GetBalance();
+       
+        for (map<uint256, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
+        {
+            const CWalletTx* pcoin = &(*it).second;
+            if (pcoin->IsConfirmed())
+                if (IsToken(pcoin->GetHash().ToString(), pcoin->nIndex, name)) {  // only add tokens to balance 
+                        nTotal += pcoin->GetAvailableCredit();
+            }
+        }
+    }
+
+    return nTotal;
+}
+
+
+int64 CWallet::GetTokenOutputValue(std::string txid, int index) const
+{
+    int64 tbr = 0;
+    for (std::map<std::string, CToken*>::const_iterator mi = tokenMap.begin(); mi != tokenMap.end(); ++mi ) {
+        if (  mi->second->isTokenOutput(txid, index) )    return mi->second->getValueOfOutput(txid+std::to_string(index));
+    }
+    printf("GetTokenOutputValue called with bunk arguments %s \n", txid.c_str());
+    return tbr;
+
+}
+
+
+
 
 int64 CWallet::GetUnconfirmedBalance() const
 {
@@ -1631,7 +1739,7 @@ bool CWallet::CreateTransaction(CScript scriptPubKey, int64 nValue,
 }
 
 // Call after CreateTransaction unless you want to abort
-bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey)
+bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey, CReserveKey& reservekey2)
 {
     {
         LOCK2(cs_main, cs_wallet);
@@ -1644,6 +1752,7 @@ bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey)
 
             // Take key pair from key pool so it won't be used again
             reservekey.KeepKey();
+            reservekey2.KeepKey();
 
             // Add tx to wallet, because if it has change it's also ours,
             // otherwise just for transaction history.
@@ -1679,7 +1788,9 @@ bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey)
     return true;
 }
 
-
+int CWallet::GetNumTokens() {
+    return tokenMap.size();
+}    
 
 
 string CWallet::SendMoney(CScript scriptPubKey, int64 nValue, CWalletTx& wtxNew, std::string tokenLabel, bool fAskFee)
@@ -1695,8 +1806,10 @@ string CWallet::SendMoney(CScript scriptPubKey, int64 nValue, CWalletTx& wtxNew,
         return strError;
     }
     string strError;
+
+    if (!CreateTransaction(scriptPubKey, nValue, wtxNew, reservekey, reservekey2, nFeeRequired, strError, tokenLabel))
     {
-        if (nValue + nFeeRequired > GetBalance())
+        if (nValue + nFeeRequired > GetTokenBalance(tokenLabel))
             strError = strprintf(_("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds!"), FormatMoney(nFeeRequired).c_str());
         printf("SendMoney() : %s\n", strError.c_str());
         return strError;
@@ -1705,7 +1818,7 @@ string CWallet::SendMoney(CScript scriptPubKey, int64 nValue, CWalletTx& wtxNew,
     if (fAskFee && !uiInterface.ThreadSafeAskFee(nFeeRequired))
         return "ABORTED";
 
-    if (!CommitTransaction(wtxNew, reservekey))
+    if (!CommitTransaction(wtxNew, reservekey, reservekey2))
         return _("Error: The transaction was rejected! This might happen if some of the coins in your wallet were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy but not marked as spent here.");
 
     return "";
@@ -1725,6 +1838,7 @@ string CWallet::SendMoneyToDestination(const CTxDestination& address, int64 nVal
     CScript scriptPubKey;
     scriptPubKey.SetDestination(address);
 
+    // add the empty string to avoid tokens
     return SendMoney(scriptPubKey, nValue, wtxNew, "", fAskFee);
 }
 

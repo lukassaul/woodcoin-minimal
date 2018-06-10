@@ -188,15 +188,19 @@ public:
     void ResendWalletTransactions();
     int64 GetBalance() const;
     int64 GetTokenBalance() const;
+    int64 GetTokenBalance(std::string name) const;
+    int64 GetTokenOutputValue(std::string name, int index) const;
+    std::string GetTokenName(std::string txid, int index) const;
     int64 GetUnconfirmedBalance() const;
     int64 GetImmatureBalance() const;
+    int GetNumTokens();
     bool CreateTransaction(const std::vector<std::pair<CScript, int64> >& vecSend,
                            CWalletTx& wtxNew, CReserveKey& reservekey, CReserveKey& reservekey2, 
                             int64& nFeeRet, std::string& strFailReason, std::string token, const CCoinControl *coinControl=NULL);
     bool CreateTransaction(CScript scriptPubKey, int64 nValue,
                            CWalletTx& wtxNew, CReserveKey& reservekey, CReserveKey& reservekey2, 
                             int64& nFeeRet, std::string& strFailReason, std::string token, const CCoinControl *coinControl=NULL);
-    bool CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey);
+    bool CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey, CReserveKey& reservekey2);
     std::string SendMoney(CScript scriptPubKey, int64 nValue, CWalletTx& wtxNew, std::string label, bool fAskFee=false);
     std::string SendMoneyToDestination(const CTxDestination &address, int64 nValue, CWalletTx& wtxNew, bool fAskFee=false);
     std::string SendTokenToDestination(const CTxDestination &address, std::string label, int64 nValue, CWalletTx& wtxNew, bool fAskFee=false);

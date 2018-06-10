@@ -95,6 +95,28 @@ Value getinfo(const Array& params, bool fHelp)
     return obj;
 }
 
+Value gettokeninfo(const Array& params, bool fHelp) {
+    if (fHelp || params.size() != 0)
+        throw runtime_error(
+            "getinfo\n"
+            "Returns an object containing various token info.");
+      
+    Object obj;
+    if (pwalletMain) {
+        obj.push_back(Pair("walletversion", pwalletMain->GetVersion()));
+        obj.push_back(Pair("balance",       ValueFromAmount(pwalletMain->GetBalance())));
+        obj.push_back(Pair("tokens",        std::to_string(pwalletMain->GetNumTokens())));
+
+        for (std::map<std::string, CToken*>::iterator mi = pwalletMain->tokenMap.begin(); mi != pwalletMain->tokenMap.end(); ++mi )  {
+            obj.push_back(Pair("tokenname",mi->first));
+            obj.push_back(Pair("numberOfOutputs", mi->second->getNumberOfTransactions()));
+            obj.push_back(Pair("numberOfOutputsMan", mi->second->numOutputs));
+            obj.push_back(Pair("walletBalance", ValueFromAmount(pwalletMain->GetTokenBalance(mi->first))));
+        }
+
+    }
+    return obj;
+}
 
 
 Value getnewaddress(const Array& params, bool fHelp)
@@ -574,50 +596,19 @@ Value gettokenbalance(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 2)
         throw runtime_error(
-            "gettokenbalance [account] [minconf=1]\n"
-            "If [account] is not specified, returns the server's total available balance.\n"
-            "If [account] is specified, returns the balance in the account.");
+            "gettokenbalance [token_name] \n"
+            "If [token_namme] is not specified, returns the server's total balance in all tokens together.\n");
 
     if (params.size() == 0)
-        return  ValueFromAmount(pwalletMain->GetBalance());
+        return  ValueFromAmount(pwalletMain->GetTokenBalance());
 
-    int nMinDepth = 1;
-    if (params.size() > 1)
-        nMinDepth = params[1].get_int();
+   // if (params.size() == 1) {    
+        
+        std::string name = params[0].get_str();
 
-    if (params[0].get_str() == "*") {
-        // Calculate total balance a different way from GetBalance()
-        // (GetBalance() sums up all unspent TxOuts)
-        // getbalance and getbalance '*' 0 should return the same number
-        int64 nBalance = 0;
-        for (map<uint256, CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); ++it)
-        {
-            const CWalletTx& wtx = (*it).second;
-            if (!wtx.IsConfirmed())
-                continue;
-
-            int64 allFee;
-            string strSentAccount;
-            list<pair<CTxDestination, int64> > listReceived;
-            list<pair<CTxDestination, int64> > listSent;
-            wtx.GetAmounts(listReceived, listSent, allFee, strSentAccount);
-            if (wtx.GetDepthInMainChain() >= nMinDepth)
-            {
-                BOOST_FOREACH(const PAIRTYPE(CTxDestination,int64)& r, listReceived)
-                    nBalance += r.second;
-            }
-            BOOST_FOREACH(const PAIRTYPE(CTxDestination,int64)& r, listSent)
-                nBalance -= r.second;
-            nBalance -= allFee;
-        }
-        return  ValueFromAmount(nBalance);
-    }
-
-    string strAccount = AccountFromValue(params[0]);
-
-    int64 nBalance = GetAccountBalance(strAccount, nMinDepth);
-
-    return ValueFromAmount(nBalance);
+        return ValueFromAmount(pwalletMain->GetTokenBalance(name));
+    //}
+  
 }
 
 
@@ -637,6 +628,8 @@ Value getbalance(const Array& params, bool fHelp)
         nMinDepth = params[1].get_int();
 
     if (params[0].get_str() == "*") {
+        // NOTE -- this doesn't consider tokens
+        
         // Calculate total balance a different way from GetBalance()
         // (GetBalance() sums up all unspent TxOuts)
         // getbalance and getbalance '*' 0 should return the same number
@@ -819,7 +812,7 @@ Value sendmany(const Array& params, bool fHelp)
     bool fCreated = pwalletMain->CreateTransaction(vecSend, wtx, keyChange, keyChange2, nFeeRequired, strFailReason, empty);
     if (!fCreated)
         throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, strFailReason);
-    if (!pwalletMain->CommitTransaction(wtx, keyChange))
+    if (!pwalletMain->CommitTransaction(wtx, keyChange, keyChange2))
         throw JSONRPCError(RPC_WALLET_ERROR, "Transaction commit failed");
 
     return wtx.GetHash().GetHex();
