@@ -102,16 +102,22 @@ Value gettokeninfo(const Array& params, bool fHelp) {
             "Returns an object containing various token info.");
       
     Object obj;
+    
+    printf("in gettokeninfo \n");
     if (pwalletMain) {
         obj.push_back(Pair("walletversion", pwalletMain->GetVersion()));
         obj.push_back(Pair("balance",       ValueFromAmount(pwalletMain->GetBalance())));
         obj.push_back(Pair("tokens",        std::to_string(pwalletMain->GetNumTokens())));
+        printf("in gettokeninfo \n");
 
-        for (std::map<std::string, CToken*>::iterator mi = pwalletMain->tokenMap.begin(); mi != pwalletMain->tokenMap.end(); ++mi )  {
+        for (std::map<std::string, CToken>::iterator mi = pwalletMain->tokenMap.begin(); mi != pwalletMain->tokenMap.end(); ++mi )  {
+            printf("looping through tokens in gettokeninfo \n");
             obj.push_back(Pair("tokenname",mi->first));
-            obj.push_back(Pair("numberOfOutputs", mi->second->getNumberOfTransactions()));
-            obj.push_back(Pair("numberOfOutputsMan", mi->second->numOutputs));
+            obj.push_back(Pair("numberOfOutputs", mi->second.getNumberOfTransactions()));
+            obj.push_back(Pair("numberOfOutputsMan", mi->second.numOutputs));
             obj.push_back(Pair("walletBalance", ValueFromAmount(pwalletMain->GetTokenBalance(mi->first))));
+            obj.push_back(Pair("genesisTxid", mi->second.genesisTxid));
+            obj.push_back(Pair("genesisVout", std::to_string(mi->second.genesisVout)));
         }
 
     }
@@ -345,8 +351,8 @@ Value sendtokentoaddress(const Array& params, bool fHelp)
     string tokenLabel = params[2].get_str();
 
     // check to see if we are watching this token
-    std::map<std::string, CToken*>::iterator mi = pwalletMain->tokenMap.find(address_string);
-    if (mi != pwalletMain->tokenMap.end())
+    //std::map<std::string, CToken>::iterator mi = pwalletMain->tokenMap.find(address_string);
+    if (pwalletMain->tokenMap.count(tokenLabel)==-1)
         throw runtime_error(
             "sendtokentoaddress <woodcoinaddress> <amount> <tokenLabel> [comment] [comment-to]\n"
             "<tokenLabel> was not found in list of currently watched tokens."

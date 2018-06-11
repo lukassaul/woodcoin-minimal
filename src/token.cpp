@@ -5,51 +5,37 @@
 #include "token.h"
 
 
-bool CToken::isTokenTx(std::string txid) {
+bool CToken::isTokenTx(std::string txid) const {
 	
-    std::map<std::string, std::vector<int> >::iterator mi = txMap.find(txid);
-        if (mi != txMap.end())
+    ///std::map<std::string, std::vector<int> >::iterator mi = txMap.find(txid);
+        if (txMap.count(txid)!=0)
         {
             return true;
         }
     return false;
 }
 
-bool CToken::isTokenOutput(std::string txid, int vout) {
-    std::string key = txid + std::to_string(vout);
-    //printf("In token IsTokenOutput..  current txid, vout %s %i \n ", txid.c_str(), vout);
-    std::map<std::string, int64>::iterator mi = valueMap.find(key);        
-        if (mi !=valueMap.end())
-        {
-                return true;   
-        }
-    
+bool CToken::isTokenOutput(std::string txid, int vout) const {
+
+    std::string key = txid + std::to_string(vout);      
+    if (valueMap.count(key)!=0) return true;   
     return false;
-    /*std::map<std::string, std::vector<int>>::iterator mi = txMap.find(txid);        
-        if (mi != txMap.end())
-        {
-		     std::vector<int> vec = txMap[txid];  //
-            if (std::find(vec.begin(), vec.end(), vout) != vec.end())		     
-                return true;
-            
-        }
-    
-    return false;*/
+
 }
 
-int64 CToken::getValueOfOutput(std::string key) {
+int64 CToken::getValueOfOutput(std::string key) const {
 
-    std::map<std::string, int64>::iterator mi = valueMap.find(key);        
-        if (mi != valueMap.end())
+    //std::map<std::string, int64>::iterator mi = valueMap.find(key);        
+        if (valueMap.count(key)!=0)
         {		     
-                return mi->second;
+                return valueMap.at(key);
             
         }
 
     return 0;
 }
 
-int CToken::getNumberOfTransactions() {
+int CToken::getNumberOfTransactions() const {
     return valueMap.size();
 }
 
@@ -59,6 +45,7 @@ void CToken::addTransaction(std::string txid, std::vector<int> vout) {
 }
 
 void CToken::addOutput(std::string key, int64 amount) {
+     printf("ADDOUTPUT CALLED \n");
      numOutputs++;
      valueMap.insert(std::make_pair(key, amount));
 }    
@@ -77,7 +64,7 @@ CToken::CToken(std::string txid, int vout, std::string name) {
     std::vector<int> voutVec;
     voutVec.push_back(vout);
     txMap.insert(std::make_pair(txid,voutVec));
-    
+    printf("Constructing token with %s transactions", std::to_string(numOutputs).c_str());
     // concatenate the vout for the key
     // (ONLY ON RESCAN NOW)
     //valueMap.insert(std::make_pair(txid + std::to_string(vout),amount));

@@ -91,7 +91,7 @@ public:
     std::string strWalletFile;
 
     std::set<int64> setKeyPool;
-    std::map<std::string, CToken*> tokenMap;
+    std::map<std::string, CToken> tokenMap;
 
     typedef std::map<unsigned int, CMasterKey> MasterKeyMap;
     MasterKeyMap mapMasterKeys;

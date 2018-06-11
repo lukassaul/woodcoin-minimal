@@ -20,17 +20,17 @@ std::map<std::string, int64> valueMap;  //  the value of each of the above vouts
 
 public:
 
-std::string genesisTxid;
-int genesisVout;
-int64 genesisValue;
-std::string label;
+std::string genesisTxid = "";
+int genesisVout = 0;
+int64 genesisValue = 0;
+std::string label = "";
 int numOutputs;
-int getNumberOfTransactions();
-bool isTokenTx(std::string txid);
-bool isTokenOutput(std::string txid, int vout);
+int getNumberOfTransactions() const;
+bool isTokenTx(std::string txid) const;
+bool isTokenOutput(std::string txid, int vout) const;
 void addTransaction(std::string txid, std::vector<int> vout);
 void addOutput(std::string key, int64 amount);
-int64 getValueOfOutput(std::string key);
+int64 getValueOfOutput(std::string key) const;
 CToken (std::string txid, int vout, std::string name);
 
 };
