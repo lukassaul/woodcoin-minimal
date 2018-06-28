@@ -219,9 +219,11 @@ public:
     std::map<CTxDestination, int64> GetAddressBalances();
 
     bool IsMine(const CTxIn& txin) const;
-   // bool IsToken(const CTxIn& txin) const;
+
+    bool IsToken(std::string txid) const;
     bool IsToken(std::string txid, int vout_index) const;
     bool IsToken(std::string txid, int vout_index, std::string label) const;
+
     int64 GetDebit(const CTxIn& txin) const;
     bool IsMine(const CTxOut& txout) const
     {

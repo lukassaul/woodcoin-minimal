@@ -28,6 +28,8 @@ int numOutputs;
 int getNumberOfTransactions() const;
 bool isTokenTx(std::string txid) const;
 bool isTokenOutput(std::string txid, int vout) const;
+bool genesisValueSet;
+void setGenesisValueSet();
 void addTransaction(std::string txid, std::vector<int> vout);
 void addOutput(std::string key, int64 amount);
 int64 getValueOfOutput(std::string key) const;

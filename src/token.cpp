@@ -50,6 +50,10 @@ void CToken::addOutput(std::string key, int64 amount) {
      valueMap.insert(std::make_pair(key, amount));
 }    
 
+void CToken::setGenesisValueSet() {
+    genesisValueSet = true;
+}
+
 // only set the genesis tx 
 //
 // we don't have the value until we scan 
@@ -60,6 +64,7 @@ CToken::CToken(std::string txid, int vout, std::string name) {
     numOutputs = 0;
     genesisTxid = txid;
     genesisVout = vout;
+    genesisValueSet = false;
     // add the genesis TX to the token map
     std::vector<int> voutVec;
     voutVec.push_back(vout);
